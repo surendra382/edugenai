@@ -1,3 +1,4 @@
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -60,6 +61,12 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+
+# Project SQLite database
+data/*.db
+data/*.db-journal
+knowledge_base/*
+!knowledge_base/.gitkeep
 
 # Flask stuff:
 instance/
