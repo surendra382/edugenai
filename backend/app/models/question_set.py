@@ -14,6 +14,7 @@ class QuestionSet(Base):
     subject_id: Mapped[int] = mapped_column(ForeignKey("subjects.id"), nullable=False)
     chapter_id: Mapped[int | None] = mapped_column(ForeignKey("chapters.id"), nullable=True)
     difficulty: Mapped[str] = mapped_column(String, nullable=False)
+    source: Mapped[str | None] = mapped_column(String, nullable=True)
     question_types: Mapped[str] = mapped_column(String, nullable=False)
     num_questions: Mapped[int] = mapped_column(Integer, nullable=False)
     include_answer_key: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

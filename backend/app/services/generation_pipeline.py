@@ -1,21 +1,73 @@
 import json
+from collections import Counter
 
 from sqlalchemy.orm import Session
 
 from backend.app.core.logging import bind_request_id, get_logger
 from backend.app.models.chapter import Chapter
 from backend.app.models.question import Question
+from backend.app.models.question_bank_item import QuestionBankItem
 from backend.app.models.question_set import QuestionSet
 from backend.app.models.question_set_chapter import QuestionSetChapter
 from backend.app.models.subject import Subject
 from backend.app.services import llm as llm_module
 from backend.app.services import prompt_builder
 from backend.app.services import question_parser
-from backend.app.services import retriever as retriever_module
 
 logger = get_logger(__name__)
 
 MAX_LOGGED_PROMPT_CHARS = 20_000
+EXEMPLAR_LIMIT = 8
+
+
+def _select_exemplars(
+    db: Session, chapter_id: int, difficulty: str, source: str | None, limit: int = EXEMPLAR_LIMIT
+) -> tuple[list[QuestionBankItem], dict[str, int]]:
+    """Prefers items matching the requested difficulty and (if given) source,
+    backfilling in progressively looser tiers when there aren't enough for
+    this chapter — a chapter with only a few 'sainik'-tagged 'easy' items
+    still gets full exemplar coverage rather than stopping short. Returns
+    the selected items plus a per-tier breakdown for observability (so a
+    paper that silently degraded past the exact-match tier is visible in
+    logs, not just inferred)."""
+    selected: list[QuestionBankItem] = []
+    exclude_ids: set[int] = set()
+    tier_breakdown: dict[str, int] = {}
+
+    def _pull(tier: str, remaining: int, **filters: str) -> None:
+        if remaining <= 0:
+            return
+        query = db.query(QuestionBankItem).filter(QuestionBankItem.chapter_id == chapter_id)
+        for field, value in filters.items():
+            query = query.filter(getattr(QuestionBankItem, field) == value)
+        if exclude_ids:
+            query = query.filter(QuestionBankItem.id.notin_(exclude_ids))
+        results = query.limit(remaining).all()
+        if results:
+            selected.extend(results)
+            exclude_ids.update(item.id for item in results)
+            tier_breakdown[tier] = len(results)
+
+    if source is not None:
+        _pull("exact", limit - len(selected), difficulty=difficulty, source=source)
+    _pull("difficulty_only", limit - len(selected), difficulty=difficulty)
+    _pull("chapter_only", limit - len(selected))
+
+    return selected, tier_breakdown
+
+
+def _format_exemplar(item: QuestionBankItem) -> str:
+    # Kept visually distinct from a natural question-stem continuation
+    # (bracketed metadata, not " Options: ..." trailing the stem like a
+    # sentence) — otherwise the LLM tends to mimic this exact shape and
+    # bakes "Options: ..."/"Answer: ..." into its own generated question
+    # text instead of using the separate structured fields.
+    parts = [f"[{item.difficulty}] ({item.question_type}) {item.stem}"]
+    if item.options:
+        parts.append(f"[options: {', '.join(json.loads(item.options))}]")
+    if item.answer:
+        parts.append(f"[answer: {item.answer}]")
+    return " ".join(parts)
 
 
 def run_generation(question_set_id: int, db: Session) -> None:
@@ -49,10 +101,22 @@ def _run_generation(question_set_id: int, db: Session) -> None:
             current_chapter_name = chapter.name
 
             stage = "retrieval"
-            context_results = retriever_module.retriever.search(
-                db, chapter_id=selection.chapter_id, query=chapter.name, limit=8
+            exemplars, tier_breakdown = _select_exemplars(
+                db, selection.chapter_id, question_set.difficulty, question_set.source
             )
-            context_chunks = [result.text for result in context_results]
+            context_chunks = [_format_exemplar(item) for item in exemplars]
+            logger.info(
+                "question_bank.lookup",
+                extra={
+                    "event": "question_bank.lookup",
+                    "question_set_id": question_set.id,
+                    "chapter_id": selection.chapter_id,
+                    "source_requested": question_set.source,
+                    "result_count": len(exemplars),
+                    "difficulty_breakdown": dict(Counter(item.difficulty for item in exemplars)),
+                    "tier_breakdown": tier_breakdown,
+                },
+            )
 
             stage = "prompt"
             prompt = prompt_builder.build_prompt(
@@ -63,6 +127,7 @@ def _run_generation(question_set_id: int, db: Session) -> None:
                 num_questions=selection.num_questions,
                 context_chunks=context_chunks,
                 include_answer_key=question_set.include_answer_key,
+                source=question_set.source,
             )
             logger.info(
                 "prompt.built",

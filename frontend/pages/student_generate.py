@@ -29,6 +29,12 @@ def fetch_chapters(subject_id: int) -> list[dict]:
     return response.json()
 
 
+def fetch_question_bank_sources(chapter_id: int) -> list[str]:
+    response = requests.get(f"{BACKEND_URL}/chapters/{chapter_id}/question-bank/sources", timeout=5)
+    response.raise_for_status()
+    return response.json()
+
+
 def create_question_set(subject_id: int, payload: dict) -> requests.Response:
     return requests.post(
         f"{BACKEND_URL}/subjects/{subject_id}/question-sets", json=payload, timeout=10
@@ -131,6 +137,15 @@ else:
             st.warning(f"Total questions across chapters cannot exceed {MAX_TOTAL_QUESTIONS}")
 
         difficulty = st.selectbox("Difficulty", options=DIFFICULTY_LEVELS)
+
+        available_sources: set[str] = set()
+        for chapter_id in selected_chapter_ids:
+            try:
+                available_sources.update(fetch_question_bank_sources(chapter_id))
+            except requests.RequestException:
+                pass
+        purpose = st.selectbox("Purpose", options=["Any"] + sorted(available_sources))
+
         question_types = st.multiselect(
             "Question Types",
             options=list(QUESTION_TYPE_LABELS.keys()),
@@ -153,6 +168,7 @@ else:
                             for chapter_id, count in chapter_counts.items()
                         ],
                         "difficulty": difficulty,
+                        "source": None if purpose == "Any" else purpose,
                         "question_types": question_types,
                         "include_answer_key": include_answer_key,
                     },
@@ -174,9 +190,10 @@ else:
     else:
         for question_set in history:
             chapters_label = question_set["chapter_name"] or f"{len(question_set['chapters'])} chapters"
+            purpose_label = question_set.get("source") or "Any"
             col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 1])
             col1.write(chapters_label)
-            col2.write(question_set["difficulty"])
+            col2.write(f"{question_set['difficulty']} · {purpose_label}")
             col3.write(", ".join(question_set["question_types"]))
             col4.write(f"Status: {question_set['status']}")
             if col5.button("View", key=f"view_question_set_{question_set['id']}"):
@@ -210,6 +227,8 @@ if active_question_set_id:
             if questions_response.status_code != 200:
                 st.error(error_detail(questions_response, "Failed to load questions"))
             else:
+                purpose_label = question_set.get("source") or "Any"
+                st.caption(f"Difficulty: {question_set['difficulty']} · Purpose: {purpose_label}")
                 questions = questions_response.json()
                 chapters_breakdown = question_set["chapters"]
                 is_multi_chapter = len(chapters_breakdown) > 1

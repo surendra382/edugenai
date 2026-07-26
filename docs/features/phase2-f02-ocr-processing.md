@@ -7,6 +7,12 @@
 
 ---
 
+> **Superseded by [phase5-f03](phase5-f03-exemplar-bank-difficulty-tagging.md).**
+> OCR (Tesseract and Gemini-as-OCR alike) has been removed entirely —
+> uploaded question-paper images now go straight through Gemini structured
+> extraction (`VisionExtractor`) into `QuestionBankItem` rows, no
+> free-text transcription step. This doc is kept for historical reference only.
+
 ## 1. Goal
 
 Every uploaded image/PDF is automatically OCR'd after upload. Extracted
@@ -20,9 +26,19 @@ retryable. The original file is always preserved untouched.
   successful upload — no separate job queue/worker process yet (that's a
   Phase 5 concern if throughput ever requires it)
 - OCR engine sits behind a swappable `OCRProvider` interface (per
-  CLAUDE.md's modularity requirement), with a default implementation
-  backed by PaddleOCR (images) + Tesseract (PDF pages via
-  pdf2image → per-page OCR)
+  CLAUDE.md's modularity requirement). Two implementations exist:
+  - `TesseractOCRProvider` (default, `OCR_PROVIDER=tesseract`): local,
+    no API key/network needed. Handles images directly and PDFs via
+    pdf2image → per-page OCR. Struggles on formula-heavy textbook layouts
+    since it does blind character recognition with no page-structure
+    understanding.
+  - `GeminiOCRProvider` (`OCR_PROVIDER=gemini`, needs `GEMINI_API_KEY`):
+    sends each page image to Gemini Flash, prompted to transcribe as
+    Markdown with LaTeX equations. Reads scanned math textbook pages far
+    more accurately, at the cost of a cloud dependency + per-page API
+    calls. This is a deviation from CLAUDE.md's "avoid paid services"
+    default stack — opt in only when Tesseract's output quality is the
+    blocker, and note it uses a free-tier cloud API, not a paid one.
 - Extracted text persisted to disk at
   `knowledge_base/{subject_id}/{chapter_id}/extracted_text/{document_id}.txt`
 - `Document.status` extended with `ocr_processing`, `ocr_done`,
@@ -72,6 +88,8 @@ immediately with `status=ocr_processing`.
 - `OCRProvider` interface: a stub implementation is used in tests (no real
   OCR engine in CI) — verifies pipeline wiring, not OCR accuracy
 - Retry is rejected when the document is not in `ocr_failed`
+- `GeminiOCRProvider` raises without a configured API key (no network call)
+- Provider selection (`OCR_PROVIDER` setting) picks the right class
 
 ### Integration Tests
 - Upload triggers OCR (via the stub provider) → status eventually

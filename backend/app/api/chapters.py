@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
 from backend.app.models.chapter import Chapter
+from backend.app.models.question_bank_item import QuestionBankItem
 from backend.app.models.subject import Subject
 from backend.app.schemas.chapter import (
     ChapterCreate,
@@ -11,8 +12,6 @@ from backend.app.schemas.chapter import (
     ChapterReorderRequest,
     ChapterUpdate,
 )
-from backend.app.schemas.search import SearchResult
-from backend.app.services import retriever as retriever_module
 
 router = APIRouter(tags=["chapters"])
 
@@ -72,14 +71,6 @@ def list_chapters(subject_id: int, db: Session = Depends(get_db)) -> list[Chapte
     )
 
 
-@router.get("/chapters/{chapter_id}/search", response_model=list[SearchResult])
-def search_chapter(
-    chapter_id: int, q: str, limit: int = 10, db: Session = Depends(get_db)
-) -> list[SearchResult]:
-    _get_chapter_or_404(db, chapter_id)
-    return retriever_module.retriever.search(db, chapter_id=chapter_id, query=q, limit=limit)
-
-
 @router.get("/chapters/{chapter_id}", response_model=ChapterRead)
 def get_chapter(chapter_id: int, db: Session = Depends(get_db)) -> Chapter:
     return _get_chapter_or_404(db, chapter_id)
@@ -102,6 +93,15 @@ def update_chapter(chapter_id: int, payload: ChapterUpdate, db: Session = Depend
 @router.delete("/chapters/{chapter_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_chapter(chapter_id: int, db: Session = Depends(get_db)) -> None:
     chapter = _get_chapter_or_404(db, chapter_id)
+    has_question_bank_items = (
+        db.query(QuestionBankItem.id).filter(QuestionBankItem.chapter_id == chapter_id).first()
+        is not None
+    )
+    if has_question_bank_items:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete chapter with existing knowledge-base content",
+        )
     db.delete(chapter)
     db.commit()
 

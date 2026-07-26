@@ -20,8 +20,7 @@ except requests.RequestException:
 st.subheader("Admin")
 st.page_link("pages/admin_subjects.py", label="Subjects")
 st.page_link("pages/admin_chapters.py", label="Chapters")
-st.page_link("pages/admin_knowledge_base.py", label="Knowledge Base")
-st.page_link("pages/admin_preview.py", label="Preview")
+st.page_link("pages/admin_question_bank.py", label="Question Bank")
 st.page_link("pages/admin_question_generator.py", label="Generate Practice Paper")
 
 st.subheader("Student")

@@ -1,28 +1,3 @@
-from pathlib import Path
-
-
-class StubOCRProvider:
-    def __init__(self, text: str = "stub extracted text", should_fail: bool = False):
-        self.text = text
-        self.should_fail = should_fail
-
-    def extract_text(self, file_path: Path, file_type: str) -> str:
-        if self.should_fail:
-            raise RuntimeError("stub OCR failure")
-        return self.text
-
-
-class StubEmbeddingProvider:
-    def __init__(self, dimension: int = 8, should_fail: bool = False):
-        self.dimension = dimension
-        self.should_fail = should_fail
-
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        if self.should_fail:
-            raise RuntimeError("stub embedding failure")
-        return [[float(index)] * self.dimension for index in range(len(texts))]
-
-
 class StubLLMProvider:
     def __init__(self, response: str = "stub response", should_fail: bool = False):
         self.response = response
@@ -31,6 +6,17 @@ class StubLLMProvider:
     def generate(self, prompt: str, *, temperature: float = 0.7, max_tokens: int = 2048) -> str:
         if self.should_fail:
             raise RuntimeError("stub LLM failure")
+        return self.response
+
+
+class StubVisionExtractor:
+    def __init__(self, response: str = "[]", should_fail: bool = False):
+        self.response = response
+        self.should_fail = should_fail
+
+    def extract_raw(self, image_bytes: bytes, mime_type: str) -> str:
+        if self.should_fail:
+            raise RuntimeError("stub vision extraction failure")
         return self.response
 
 

@@ -7,6 +7,12 @@
 
 ---
 
+> **Superseded by [phase5-f03](phase5-f03-exemplar-bank-difficulty-tagging.md).**
+> Chunking, embeddings, and Chroma have been removed entirely — question
+> generation now reads structured `QuestionBankItem` exemplars directly by
+> chapter/difficulty instead of chunk-level vector search. This doc is kept
+> for historical reference only.
+
 ## 1. Goal
 
 OCR'd document text is automatically chunked, embedded, and indexed into

@@ -7,6 +7,12 @@
 
 ---
 
+> **Superseded by [phase5-f03](phase5-f03-exemplar-bank-difficulty-tagging.md).**
+> The `/chapters/{id}/documents` upload flow described below has been
+> removed and replaced by Question Bank import (Gemini structured
+> extraction straight into `QuestionBankItem`, no OCR/storage-as-prose
+> step). This doc is kept for historical reference only.
+
 ## 1. Goal
 
 Admin can upload files (textbook page images, PDFs, worksheets, sample

@@ -1,7 +1,11 @@
+import json
+
 import pytest
+from fakes import StubVisionExtractor
 from pydantic import ValidationError
 
 from backend.app.schemas.chapter import ChapterCreate
+from backend.app.services import vision_extractor as vision_extractor_module
 
 
 def test_schema_rejects_empty_name():
@@ -82,6 +86,41 @@ def test_delete_chapter_removes_and_keeps_valid_order(client):
     remaining = client.get(f"/subjects/{subject['id']}/chapters").json()
     assert [c["id"] for c in remaining] == [first["id"], third["id"]]
     assert remaining[0]["order"] < remaining[1]["order"]
+
+
+def test_delete_chapter_with_question_bank_items_returns_409(client, monkeypatch):
+    subject = client.post("/subjects", json={"name": "Mathematics"}).json()
+    chapter = client.post(f"/subjects/{subject['id']}/chapters", json={"name": "Algebra"}).json()
+
+    monkeypatch.setattr(
+        vision_extractor_module,
+        "vision_extractor",
+        StubVisionExtractor(
+            response=json.dumps(
+                [
+                    {
+                        "question_type": "mcq",
+                        "stem": "2+2=?",
+                        "concept": "addition",
+                        "options": ["3", "4", "5", "6"],
+                        "answer": "4",
+                        "difficulty": "easy",
+                    }
+                ]
+            )
+        ),
+    )
+    client.post(
+        f"/chapters/{chapter['id']}/question-bank/import",
+        data={"class_grade": "8", "source": "unknown"},
+        files={"images": ("page1.png", b"fake-image-bytes", "image/png")},
+    )
+
+    response = client.delete(f"/chapters/{chapter['id']}")
+    assert response.status_code == 409
+
+    still_there = client.get(f"/chapters/{chapter['id']}")
+    assert still_there.status_code == 200
 
 
 def test_reorder_submit_new_order_reflected_in_get(client):

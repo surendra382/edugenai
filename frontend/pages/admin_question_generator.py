@@ -28,6 +28,12 @@ def fetch_chapters(subject_id: int) -> list[dict]:
     return response.json()
 
 
+def fetch_question_bank_sources(chapter_id: int) -> list[str]:
+    response = requests.get(f"{BACKEND_URL}/chapters/{chapter_id}/question-bank/sources", timeout=5)
+    response.raise_for_status()
+    return response.json()
+
+
 def create_question_set(chapter_id: int, payload: dict) -> requests.Response:
     return requests.post(
         f"{BACKEND_URL}/chapters/{chapter_id}/question-sets", json=payload, timeout=10
@@ -106,9 +112,16 @@ if st.session_state.get("question_generator_chapter_id") != selected_chapter_id:
     st.session_state["question_generator_chapter_id"] = selected_chapter_id
     st.session_state["active_question_set_id"] = None
 
+try:
+    available_sources = fetch_question_bank_sources(selected_chapter_id)
+except requests.RequestException:
+    available_sources = []
+purpose_options = ["Any"] + available_sources
+
 st.subheader("Generate")
 with st.form("generate_question_set_form"):
     difficulty = st.selectbox("Difficulty", options=DIFFICULTY_LEVELS)
+    purpose = st.selectbox("Purpose", options=purpose_options)
     question_types = st.multiselect(
         "Question Types",
         options=list(QUESTION_TYPE_LABELS.keys()),
@@ -126,6 +139,7 @@ with st.form("generate_question_set_form"):
                 selected_chapter_id,
                 {
                     "difficulty": difficulty,
+                    "source": None if purpose == "Any" else purpose,
                     "question_types": question_types,
                     "num_questions": int(num_questions),
                     "include_answer_key": include_answer_key,
@@ -148,7 +162,8 @@ else:
     else:
         for question_set in history:
             col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
-            col1.write(question_set["difficulty"])
+            purpose_label = question_set.get("source") or "Any"
+            col1.write(f"{question_set['difficulty']} · {purpose_label}")
             col2.write(", ".join(question_set["question_types"]))
             col3.write(f"Status: {question_set['status']}")
             if col4.button("View", key=f"view_question_set_{question_set['id']}"):
@@ -182,6 +197,8 @@ if active_question_set_id:
             if questions_response.status_code != 200:
                 st.error(error_detail(questions_response, "Failed to load questions"))
             else:
+                purpose_label = question_set.get("source") or "Any"
+                st.caption(f"Difficulty: {question_set['difficulty']} · Purpose: {purpose_label}")
                 questions = questions_response.json()
                 for question in questions:
                     st.markdown(

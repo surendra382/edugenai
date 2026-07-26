@@ -1,15 +1,14 @@
 import pytest
 from fastapi.testclient import TestClient
-from fakes import StubEmbeddingProvider, StubLLMProvider, StubOCRProvider
+from fakes import StubLLMProvider, StubVisionExtractor
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from backend.app.core.config import settings
 from backend.app.db.session import Base, get_db
 from backend.app.main import app
-from backend.app.services import embeddings as embeddings_module
 from backend.app.services import llm as llm_module
-from backend.app.services import ocr as ocr_module
+from backend.app.services import vision_extractor as vision_extractor_module
 
 
 @pytest.fixture
@@ -31,9 +30,8 @@ def client(tmp_path, monkeypatch):
     app.dependency_overrides[get_db] = override_get_db
     monkeypatch.setattr(settings, "knowledge_base_dir", str(tmp_path / "knowledge_base"))
     monkeypatch.setattr(settings, "log_dir", str(tmp_path / "logs"))
-    monkeypatch.setattr(ocr_module, "ocr_provider", StubOCRProvider())
-    monkeypatch.setattr(embeddings_module, "embedding_provider", StubEmbeddingProvider())
     monkeypatch.setattr(llm_module, "llm_provider", StubLLMProvider())
+    monkeypatch.setattr(vision_extractor_module, "vision_extractor", StubVisionExtractor())
 
     with TestClient(app) as test_client:
         yield test_client
