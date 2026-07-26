@@ -486,23 +486,30 @@ Hybrid retrieval is preferred over vector search alone.
 
 The architecture should remain modular so that any component can be replaced later.
 
+> **Update (phase5-f03):** the Knowledge Base branch above (OCR → Chroma
+> vector DB → embeddings) was replaced during implementation. Uploaded
+> question-paper images are now read by a Gemini vision model directly into
+> structured `QuestionBankItem` rows in SQLite (no OCR text stage, no vector
+> store, no chunking) — the Question Generator queries that table by exact
+> chapter/difficulty filters for exemplars instead of retrieving from
+> Chroma. Web Search stays as originally planned (unimplemented in v1). See
+> [phase5-f03](features/phase5-f03-exemplar-bank-difficulty-tagging.md).
+
 ---
 
 # 12. Technology Stack (Version 1)
 
-| Layer       | Technology               |
-| ----------- | ------------------------ |
-| UI          | Streamlit                |
-| Backend     | FastAPI                  |
-| LLM         | Ollama                   |
-| Models      | Qwen / Gemma / Llama     |
-| OCR         | PaddleOCR + Tesseract    |
-| Vector DB   | Chroma                   |
-| Embeddings  | BAAI BGE / Nomic Embed   |
-| Metadata DB | SQLite                   |
-| Storage     | Local File System        |
-| Search      | DuckDuckGo / Tavily Free |
-| Deployment  | Local / VPS / Azure VM   |
+| Layer       | Technology                            |
+| ----------- | -------------------------------------- |
+| UI          | Streamlit                              |
+| Backend     | FastAPI                                |
+| LLM         | Ollama                                 |
+| Models      | Qwen / Gemma / Llama                   |
+| Question extraction | Gemini vision → structured JSON (replaces OCR + Vector DB + Embeddings, phase5-f03) |
+| Metadata DB | SQLite                                 |
+| Storage     | Local File System                      |
+| Search      | DuckDuckGo / Tavily Free               |
+| Deployment  | Local / VPS / Azure VM                 |
 
 ---
 

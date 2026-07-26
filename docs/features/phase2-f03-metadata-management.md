@@ -7,6 +7,12 @@
 
 ---
 
+> **Superseded by [phase5-f03](phase5-f03-exemplar-bank-difficulty-tagging.md).**
+> `DocumentMetadata` has been removed. Its role is now split between
+> admin-supplied batch facts (`class_grade`, `source`) on Question Bank
+> import and per-question extracted fields (`concept`, `difficulty`) on
+> `QuestionBankItem`. This doc is kept for historical reference only.
+
 ## 1. Goal
 
 Every uploaded document has a metadata record (board, class, keywords,

@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     backend_url: str = "http://127.0.0.1:8000"
     knowledge_base_dir: str = "./knowledge_base"
     max_upload_size_mb: int = 20
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-3.6-flash"
     llm_api_key: str = ""
     llm_model: str = "llama-3.3-70b-versatile"
     llm_base_url: str = "https://api.groq.com/openai/v1"

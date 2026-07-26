@@ -100,6 +100,27 @@ def test_build_question_paper_pdf_handles_non_latin1_symbols_without_crashing():
     assert pdf_bytes.startswith(b"%PDF")
 
 
+def test_build_question_paper_pdf_renders_rupee_sign_instead_of_question_mark():
+    questions = [
+        {
+            "question_index": 0,
+            "chapter_id": 1,
+            "question_type": "short_answer",
+            "text": "A shirt costs ₹800. Find the sale price.",
+            "options": None,
+            "answer": None,
+        }
+    ]
+    pdf_bytes = build_question_paper_pdf(
+        subject_name="Mathematics",
+        chapters=_chapters(),
+        difficulty="easy",
+        questions=questions,
+        include_answers=False,
+    )
+    assert b"Rs. 800" in pdf_bytes
+
+
 def test_build_question_paper_pdf_multi_chapter_groups_by_chapter_with_headings():
     chapters = [
         {"chapter_id": 1, "chapter_name": "Algebra"},

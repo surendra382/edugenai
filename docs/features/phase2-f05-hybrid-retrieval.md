@@ -7,6 +7,12 @@
 
 ---
 
+> **Superseded by [phase5-f03](phase5-f03-exemplar-bank-difficulty-tagging.md).**
+> `HybridRetriever`, the `/chapters/{id}/search` endpoint, and the FTS5
+> keyword index have all been removed — there is no vector/keyword search
+> in the system anymore, only exact relational filters over
+> `QuestionBankItem`. This doc is kept for historical reference only.
+
 ## 1. Goal
 
 Admin can query a chapter's knowledge base with combined semantic +

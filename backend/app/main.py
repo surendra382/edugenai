@@ -7,9 +7,9 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from backend.app import models  # noqa: F401  registers models with Base.metadata
 from backend.app.api.chapters import router as chapters_router
-from backend.app.api.documents import router as documents_router
 from backend.app.api.health import router as health_router
 from backend.app.api.llm import router as llm_router
+from backend.app.api.question_bank import router as question_bank_router
 from backend.app.api.questions import router as questions_router
 from backend.app.api.subjects import router as subjects_router
 from backend.app.core.logging import bind_request_id, configure_logging, current_request_id, get_logger
@@ -57,8 +57,8 @@ app = FastAPI(title="EduGenAI", lifespan=lifespan)
 app.include_router(health_router)
 app.include_router(subjects_router)
 app.include_router(chapters_router)
-app.include_router(documents_router)
 app.include_router(llm_router)
+app.include_router(question_bank_router)
 app.include_router(questions_router)
 
 app.add_middleware(RequestIdMiddleware)

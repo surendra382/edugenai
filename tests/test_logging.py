@@ -1,7 +1,7 @@
 import json
 import logging
 
-from fakes import StubLLMProvider, StubOCRProvider
+from fakes import StubLLMProvider, StubVisionExtractor
 from fastapi.testclient import TestClient
 
 from backend.app.core.config import settings
@@ -15,7 +15,7 @@ from backend.app.core.logging import (
 from backend.app.db.session import get_db
 from backend.app.main import app
 from backend.app.services import llm as llm_module
-from backend.app.services import ocr as ocr_module
+from backend.app.services import vision_extractor as vision_extractor_module
 from backend.app.services.llm import OpenAICompatibleLLMProvider
 
 
@@ -36,12 +36,30 @@ def _create_chapter(client) -> dict:
     return client.post(f"/subjects/{subject['id']}/chapters", json={"name": "Motion"}).json()
 
 
-def _upload(client, chapter_id: int, filename: str = "page.png") -> dict:
-    return client.post(
-        f"/chapters/{chapter_id}/documents",
-        data={"material_type": "textbook_page"},
-        files={"file": (filename, b"fake-image-bytes", "image/png")},
-    ).json()
+def _seed_question_bank_item(client, chapter_id: int, difficulty: str = "easy") -> dict:
+    original = vision_extractor_module.vision_extractor
+    vision_extractor_module.vision_extractor = StubVisionExtractor(
+        response=json.dumps(
+            [
+                {
+                    "question_type": "mcq",
+                    "stem": "What is velocity?",
+                    "concept": "kinematics",
+                    "options": ["Speed", "Speed with direction", "Distance", "Time"],
+                    "answer": "Speed with direction",
+                    "difficulty": difficulty,
+                }
+            ]
+        )
+    )
+    try:
+        return client.post(
+            f"/chapters/{chapter_id}/question-bank/import",
+            data={"class_grade": "8", "source": "unknown"},
+            files={"images": ("page.png", b"fake-image-bytes", "image/png")},
+        ).json()
+    finally:
+        vision_extractor_module.vision_extractor = original
 
 
 def _valid_llm_response(count: int = 1) -> str:
@@ -124,47 +142,6 @@ def test_request_id_filter_stamps_records_only_within_binding(tmp_path, monkeypa
     assert records["outside context"] is None
 
 
-# --- retriever logging ---
-
-
-def test_retriever_logs_retrieval_result_with_truncated_preview(client, monkeypatch, caplog):
-    caplog.set_level(logging.INFO)
-    chapter = _create_chapter(client)
-    monkeypatch.setattr(ocr_module, "ocr_provider", StubOCRProvider(text="x" * 500))
-    _upload(client, chapter["id"])
-
-    response = client.get(f"/chapters/{chapter['id']}/search", params={"q": "x"})
-    assert response.status_code == 200
-
-    retrieval_records = [r for r in caplog.records if getattr(r, "event", None) == "retrieval.result"]
-    assert len(retrieval_records) == 1
-    record = retrieval_records[0]
-    assert record.chapter_id == chapter["id"]
-    assert record.result_count == len(response.json())
-    assert record.results
-    for entry in record.results:
-        assert len(entry["text_preview"]) <= 200
-        assert "text" not in entry
-
-
-def test_retriever_logs_full_text_at_debug_level(client, monkeypatch, caplog):
-    monkeypatch.setattr(settings, "log_level", "DEBUG")
-    configure_logging()
-    caplog.set_level(logging.DEBUG)
-
-    chapter = _create_chapter(client)
-    long_text = "y" * 500
-    monkeypatch.setattr(ocr_module, "ocr_provider", StubOCRProvider(text=long_text))
-    _upload(client, chapter["id"])
-
-    response = client.get(f"/chapters/{chapter['id']}/search", params={"q": "y"})
-    assert response.status_code == 200
-
-    retrieval_records = [r for r in caplog.records if getattr(r, "event", None) == "retrieval.result"]
-    assert len(retrieval_records) == 1
-    assert any(entry.get("text") == long_text for entry in retrieval_records[0].results)
-
-
 # --- LLM provider logging ---
 
 
@@ -202,8 +179,11 @@ def test_openai_compatible_provider_logs_request_and_token_usage(tmp_path, monke
 
 def test_generation_pipeline_logs_prompt_with_shared_request_id(client, monkeypatch, caplog):
     caplog.set_level(logging.INFO)
-    monkeypatch.setattr(llm_module, "llm_provider", StubLLMProvider(response=_valid_llm_response(1)))
     chapter = _create_chapter(client)
+    _seed_question_bank_item(client, chapter["id"])
+
+    monkeypatch.setattr(llm_module, "llm_provider", StubLLMProvider(response=_valid_llm_response(1)))
+    caplog.clear()
 
     response = client.post(
         f"/chapters/{chapter['id']}/question-sets",
@@ -213,17 +193,21 @@ def test_generation_pipeline_logs_prompt_with_shared_request_id(client, monkeypa
     question_set_id = response.json()["id"]
     assert client.get(f"/question-sets/{question_set_id}").json()["status"] == "completed"
 
-    retrieval_records = [r for r in caplog.records if getattr(r, "event", None) == "retrieval.result"]
+    lookup_records = [r for r in caplog.records if getattr(r, "event", None) == "question_bank.lookup"]
     prompt_records = [r for r in caplog.records if getattr(r, "event", None) == "prompt.built"]
-    assert len(retrieval_records) == 1
+    assert len(lookup_records) == 1
     assert len(prompt_records) == 1
+
+    lookup_record = lookup_records[0]
+    assert lookup_record.chapter_id == chapter["id"]
+    assert lookup_record.result_count == 1
 
     prompt_record = prompt_records[0]
     assert prompt_record.chapter_id == chapter["id"]
     assert prompt_record.prompt_char_len == len(prompt_record.prompt)
     assert "mcq" in prompt_record.prompt
 
-    request_ids = {retrieval_records[0].request_id, prompt_record.request_id}
+    request_ids = {lookup_record.request_id, prompt_record.request_id}
     assert len(request_ids) == 1
     assert next(iter(request_ids)) is not None
 

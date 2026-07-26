@@ -33,7 +33,7 @@ def test_build_prompt_falls_back_to_general_knowledge_when_no_context():
         num_questions=3,
         context_chunks=[],
     )
-    assert "No uploaded material is available" in prompt
+    assert "No question bank items are available" in prompt
     assert "Algebra" in prompt
 
 

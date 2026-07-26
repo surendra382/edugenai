@@ -16,6 +16,7 @@ class QuestionSetCreate(BaseModel):
     question_types: list[QuestionType]
     num_questions: int
     include_answer_key: bool = False
+    source: str | None = None
 
     @field_validator("question_types")
     @classmethod
@@ -49,6 +50,7 @@ class QuestionSetCreateMulti(BaseModel):
     difficulty: Difficulty
     question_types: list[QuestionType]
     include_answer_key: bool = False
+    source: str | None = None
 
     @field_validator("question_types")
     @classmethod
@@ -97,6 +99,7 @@ class QuestionSetRead(BaseModel):
     chapter_id: int | None
     chapters: list[QuestionSetChapterRead]
     difficulty: Difficulty
+    source: str | None
     question_types: list[QuestionType]
     num_questions: int
     include_answer_key: bool

@@ -99,10 +99,11 @@ if not history:
 else:
     for question_set in history:
         chapters_label = question_set["chapter_name"] or f"{len(question_set['chapters'])} chapters"
+        purpose_label = question_set.get("source") or "Any"
         col1, col2, col3, col4, col5, col6 = st.columns([2, 2, 1, 2, 2, 1])
         col1.write(question_set["subject_name"])
         col2.write(chapters_label)
-        col3.write(question_set["difficulty"])
+        col3.write(f"{question_set['difficulty']} · {purpose_label}")
         col4.write(", ".join(question_set["question_types"]))
         col5.write(f"Status: {question_set['status']}")
         if col6.button("View", key=f"view_history_{question_set['id']}"):
@@ -114,6 +115,8 @@ if active_question_set:
         active_question_set["chapter_name"] or f"{len(active_question_set['chapters'])} chapters"
     )
     st.subheader(f"Result — {active_question_set['subject_name']} / {active_chapters_label}")
+    active_purpose_label = active_question_set.get("source") or "Any"
+    st.caption(f"Difficulty: {active_question_set['difficulty']} · Purpose: {active_purpose_label}")
     if active_question_set["status"] == "generating":
         st.info("Still generating — check back shortly.")
     elif active_question_set["status"] == "failed":

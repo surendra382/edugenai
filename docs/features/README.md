@@ -27,11 +27,16 @@ Student Portal (Phase 4) needs to distinguish admin vs. student roles.
 
 | ID  | Feature | Depends on | Status |
 |-----|---------|------------|--------|
-| F01 | [Material Upload & Storage](phase2-f01-material-upload.md) | phase1-f03 | Done |
-| F02 | [OCR Processing Pipeline](phase2-f02-ocr-processing.md) | phase2-f01 | Done |
-| F03 | [Metadata Management](phase2-f03-metadata-management.md) | phase2-f01 | Done |
-| F04 | [Chunking & Embeddings (Vector DB)](phase2-f04-chunking-embeddings.md) | phase2-f02, phase2-f03 | Done |
-| F05 | [Hybrid Retrieval & Preview](phase2-f05-hybrid-retrieval.md) | phase2-f04 | Done |
+| F01 | [Material Upload & Storage](phase2-f01-material-upload.md) | phase1-f03 | Superseded¹ |
+| F02 | [OCR Processing Pipeline](phase2-f02-ocr-processing.md) | phase2-f01 | Superseded¹ |
+| F03 | [Metadata Management](phase2-f03-metadata-management.md) | phase2-f01 | Superseded¹ |
+| F04 | [Chunking & Embeddings (Vector DB)](phase2-f04-chunking-embeddings.md) | phase2-f02, phase2-f03 | Superseded¹ |
+| F05 | [Hybrid Retrieval & Preview](phase2-f05-hybrid-retrieval.md) | phase2-f04 | Superseded¹ |
+
+¹ Replaced by [phase5-f03](phase5-f03-exemplar-bank-difficulty-tagging.md):
+upload/OCR/chunking/embeddings/Chroma/hybrid-retrieval are all removed in
+favor of Gemini structured extraction straight into a `QuestionBankItem`
+table. Docs kept for historical reference.
 
 Storage layout decision: all uploaded material and derived artifacts
 (OCR text, embeddings) live under `knowledge_base/{subject_id}/{chapter_id}/...`,
@@ -88,6 +93,8 @@ real per-user separation arrives once Phase 5 adds real accounts.
 |-----|---------|------------|--------|
 | F01 | [Multi-Chapter Practice Paper Generation](phase5-f01-multi-chapter-paper-generation.md) | phase3-f02, phase3-f03, phase4-f01, phase4-f02, phase4-f03 | In Progress |
 | F02 | [Observability & Structured Logging](phase5-f02-observability-logging.md) | phase2-f05, phase3-f01, phase3-f02 | In Progress |
+| F03 | [Question Bank — Structured Extraction & Storage](phase5-f03-exemplar-bank-difficulty-tagging.md) | phase1-f03, phase3-f02 | In Progress |
+| F04 | [Purpose-Filtered Few-Shot Generation](phase5-f04-purpose-filtered-generation.md) | phase5-f01, phase5-f03 | Done |
 
 Not part of the original SRS roadmap (§18), which numbers "Deployment &
 Production" as Phase 5 — that phase is renumbered to Phase 6 below. This

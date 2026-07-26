@@ -7,6 +7,14 @@
 
 ---
 
+> **Retrieval mechanism updated by [phase5-f03](phase5-f03-exemplar-bank-difficulty-tagging.md).**
+> The generation flow described below is otherwise unchanged (prompt
+> builder → LLM → question parser), but its context source is no longer
+> `HybridRetriever`/Chroma chunk search — it now queries `QuestionBankItem`
+> directly for difficulty-matched exemplar questions per chapter. Any
+> mention of "retrieved chunks"/"uploaded material" below should be read as
+> "question bank exemplars."
+
 ## 1. Goal
 
 Given a chapter, difficulty, question types, and a question count, the

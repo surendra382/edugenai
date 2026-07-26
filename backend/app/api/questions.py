@@ -55,11 +55,13 @@ def _create_question_set(
     difficulty: str,
     question_types: list[str],
     include_answer_key: bool,
+    source: str | None = None,
 ) -> QuestionSet:
     question_set = QuestionSet(
         subject_id=subject_id,
         chapter_id=chapter_selections[0][0] if len(chapter_selections) == 1 else None,
         difficulty=difficulty,
+        source=source,
         question_types=",".join(question_types),
         num_questions=sum(num_questions for _, num_questions in chapter_selections),
         include_answer_key=include_answer_key,
@@ -101,6 +103,7 @@ def create_question_set(
         difficulty=payload.difficulty,
         question_types=payload.question_types,
         include_answer_key=payload.include_answer_key,
+        source=payload.source,
     )
 
     background_tasks.add_task(run_generation, question_set_id=question_set.id, db=db)
@@ -146,6 +149,7 @@ def create_multi_chapter_question_set(
         difficulty=payload.difficulty,
         question_types=payload.question_types,
         include_answer_key=payload.include_answer_key,
+        source=payload.source,
     )
 
     background_tasks.add_task(run_generation, question_set_id=question_set.id, db=db)
@@ -223,6 +227,7 @@ def list_all_question_sets(
             "chapter_id": question_set.chapter_id,
             "chapters": chapter_breakdown.get(question_set.id, []),
             "difficulty": question_set.difficulty,
+            "source": question_set.source,
             "question_types": question_set.question_types,
             "num_questions": question_set.num_questions,
             "include_answer_key": question_set.include_answer_key,
@@ -324,6 +329,7 @@ def export_question_set_pdf(
             for q in questions
         ],
         include_answers=include_answers and question_set.include_answer_key,
+        source=question_set.source,
     )
 
     return Response(

@@ -32,6 +32,7 @@ _UNICODE_REPLACEMENTS = {
     "”": '"',
     "…": "...",
     "°": " deg",
+    "₹": "Rs. ",
 }
 
 
@@ -55,6 +56,7 @@ def build_question_paper_pdf(
     difficulty: str,
     questions: list[dict],
     include_answers: bool,
+    source: str | None = None,
 ) -> bytes:
     pdf = FPDF()
     pdf.set_compression(False)
@@ -63,6 +65,8 @@ def build_question_paper_pdf(
 
     is_multi_chapter = len(chapters) > 1
     title = subject_name if is_multi_chapter else f"{subject_name} - {chapters[0]['chapter_name']}"
+    if source:
+        title = f"{source} - {title}"
 
     pdf.set_font("Helvetica", "B", 16)
     _line(pdf, 10, title)
